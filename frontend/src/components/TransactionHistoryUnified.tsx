@@ -38,6 +38,7 @@ export function TransactionHistoryUnified() {
   const [dataSource, setDataSource] = useState<DataSource>('none');
   const [showCount, setShowCount] = useState(20);
   const [expandedTx, setExpandedTx] = useState<string | null>(null);
+  const [cacheAge, setCacheAge] = useState<string | null>(null);
   
   // 获取合约地址
   const contractAddress = getContractAddress(chainId);
@@ -156,17 +157,38 @@ export function TransactionHistoryUnified() {
     return 'normal';
   };
   
+  // 获取缓存年龄
+  const getCacheAge = (): string | null => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (!cached) return null;
+      
+      const { timestamp } = JSON.parse(cached);
+      const age = Date.now() - timestamp;
+      
+      if (age < 60000) return '刚刚更新';
+      if (age < 120000) return '1 分钟前';
+      if (age < 300000) return `${Math.floor(age / 60000)} 分钟前`;
+      return '已过期';
+    } catch {
+      return null;
+    }
+  };
+  
   // 加载交易历史
-  const loadTransfers = async () => {
+  const loadTransfers = async (forceRefresh = false) => {
     if (!address) return;
     
-    // 先尝试从缓存加载
-    const cached = loadFromCache();
-    if (cached) {
-      setTransfers(cached);
-      setDataSource('loaded');
-      console.log('📦 从缓存加载了交易历史');
-      return;
+    // 如果不是强制刷新，先尝试从缓存加载
+    if (!forceRefresh) {
+      const cached = loadFromCache();
+      if (cached) {
+        setTransfers(cached);
+        setDataSource('loaded');
+        setCacheAge(getCacheAge());
+        console.log('📦 从缓存加载了交易历史');
+        return;
+      }
     }
     
     setLoading(true);
@@ -236,6 +258,7 @@ export function TransactionHistoryUnified() {
       setTransfers(enhancedTransfers as Transfer[]);
       saveToCache(enhancedTransfers as Transfer[]);
       setDataSource('loaded');
+      setCacheAge('刚刚更新');
       
       console.log(`✅ 加载了 ${enhancedTransfers.length} 笔交易`);
       
@@ -276,6 +299,17 @@ export function TransactionHistoryUnified() {
   };
   
   const displayTransfers = getFilteredTransfers().slice(0, showCount);
+  
+  // 定时更新缓存年龄显示
+  useEffect(() => {
+    if (dataSource === 'loaded' && cacheAge) {
+      const interval = setInterval(() => {
+        setCacheAge(getCacheAge());
+      }, 30000); // 每30秒更新一次
+      
+      return () => clearInterval(interval);
+    }
+  }, [dataSource, cacheAge]);
   
   // 格式化辅助函数
   const formatTime = (timestamp: string) => {
@@ -344,7 +378,7 @@ export function TransactionHistoryUnified() {
         
         {dataSource === 'none' && (
           <button
-            onClick={loadTransfers}
+            onClick={() => loadTransfers(false)}
             disabled={loading}
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
@@ -353,13 +387,25 @@ export function TransactionHistoryUnified() {
         )}
         
         {dataSource === 'loaded' && (
-          <button
-            onClick={loadTransfers}
-            disabled={loading}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-          >
-            🔄 刷新
-          </button>
+          <div className="flex items-center gap-3">
+            {cacheAge && (
+              <span className="text-xs text-gray-500">
+                {cacheAge === '已过期' ? (
+                  <span className="text-amber-600">⚠️ 缓存{cacheAge}</span>
+                ) : (
+                  <span>📦 更新于 {cacheAge}</span>
+                )}
+              </span>
+            )}
+            <button
+              onClick={() => loadTransfers(true)}
+              disabled={loading}
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+              title="忽略缓存，获取最新数据"
+            >
+              🔄 获取最新
+            </button>
+          </div>
         )}
       </div>
       
@@ -376,7 +422,7 @@ export function TransactionHistoryUnified() {
             包括本系统合约、其他合约交互、普通转账等
           </p>
           <button
-            onClick={loadTransfers}
+            onClick={() => loadTransfers(false)}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
           >
             加载交易历史
@@ -662,7 +708,17 @@ export function TransactionHistoryUnified() {
               </div>
             </div>
             <div className="text-center text-xs text-gray-500 mt-2">
-              缓存时间: {new Date().toLocaleTimeString()}
+              <div className="flex justify-center items-center gap-2">
+                <span>数据状态: {cacheAge || '最新'}</span>
+                {cacheAge && cacheAge !== '刚刚更新' && (
+                  <button
+                    onClick={() => loadTransfers(true)}
+                    className="text-blue-600 hover:text-blue-700 underline"
+                  >
+                    强制刷新
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </>

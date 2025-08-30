@@ -1,5 +1,5 @@
 // 使用 fetch 直接查询 The Graph，不需要 Apollo
-const GRAPH_ENDPOINT = 'http://localhost:8000/subgraphs/name/datalogger';
+const GRAPH_ENDPOINT = import.meta.env.VITE_GRAPH_ENDPOINT_SEPOLIA;
 
 export async function queryGraph(query: string, variables?: any) {
   const response = await fetch(GRAPH_ENDPOINT, {
