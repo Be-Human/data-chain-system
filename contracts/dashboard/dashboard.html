@@ -1,0 +1,468 @@
+<!-- dashboard.html - 保存到项目根目录 -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Hardhat Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 { 
+            text-align: center; 
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card h2 {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .stat:last-child { border: none; }
+        .label { opacity: 0.8; }
+        .value { 
+            font-weight: bold; 
+            font-family: 'SF Mono', monospace;
+        }
+        .address {
+            font-size: 0.85em;
+            word-break: break-all;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        .status.connected {
+            background: #4caf50;
+        }
+        .status.disconnected {
+            background: #f44336;
+        }
+        .tx-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .tx-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+        .btn {
+            background: linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        #logs {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.85em;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 2px 0;
+        }
+        .log-time { color: #ffd700; }
+        .log-info { color: #4caf50; }
+        .log-error { color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Hardhat Dashboard</h1>
+        
+        <div class="grid">
+            <!-- 连接状态 -->
+            <div class="card">
+                <h2>⚡ 连接状态</h2>
+                <div class="stat">
+                    <span class="label">状态</span>
+                    <span class="status disconnected" id="status">未连接</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Chain ID</span>
+                    <span class="value" id="chainId">-</span>
+                </div>
+                <div class="stat">
+                    <span class="label">当前区块</span>
+                    <span class="value" id="blockNumber">-</span>
+                </div>
+                <!-- dashboard.html - 续接上面的代码 -->
+                <div class="stat">
+                    <span class="label">Gas Price</span>
+                    <span class="value" id="gasPrice">-</span>
+                </div>
+            </div>
+            
+            <!-- 账户信息 -->
+            <div class="card">
+                <h2>💰 测试账户</h2>
+                <div id="accounts"></div>
+            </div>
+            
+            <!-- 合约信息 -->
+            <div class="card">
+                <h2>📄 合约数据</h2>
+                <div id="contractInfo">
+                    <div class="stat">
+                        <span class="label">等待部署...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 最近交易 -->
+            <div class="card">
+                <h2>📝 最近交易</h2>
+                <div class="tx-list" id="transactions">
+                    <div class="tx-item">暂无交易</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 操作按钮 -->
+        <div class="card">
+            <h2>🎮 快速操作</h2>
+            <button class="btn" onclick="sendTestTx()">发送测试交易</button>
+            <button class="btn" onclick="deployContract()">部署合约</button>
+            <button class="btn" onclick="queryContract()">查询合约</button>
+            <button class="btn" onclick="clearLogs()">清空日志</button>
+            <button class="btn" onclick="exportData()">导出数据</button>
+        </div>
+        
+        <!-- 实时日志 -->
+        <div class="card">
+            <h2>📊 实时日志</h2>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+    <script>
+        let provider;
+        let signer;
+        let contractAddress = localStorage.getItem('contractAddress');
+        const transactions = [];
+        
+        // 初始化
+        async function init() {
+            try {
+                provider = new ethers.JsonRpcProvider('http://localhost:8545');
+                await provider.getBlockNumber();
+                
+                document.getElementById('status').className = 'status connected';
+                document.getElementById('status').textContent = '已连接';
+                
+                const accounts = await provider.listAccounts();
+                if (accounts.length > 0) {
+                    signer = await provider.getSigner(0);
+                }
+                
+                await updateDashboard();
+                startMonitoring();
+                
+                addLog('log-info', '✅ Dashboard 启动成功');
+            } catch (error) {
+                document.getElementById('status').className = 'status disconnected';
+                document.getElementById('status').textContent = '连接失败';
+                addLog('log-error', '❌ 连接失败: ' + error.message);
+                
+                // 5秒后重试
+                setTimeout(init, 5000);
+            }
+        }
+        
+        // 更新仪表板
+        async function updateDashboard() {
+            try {
+                // 基础信息
+                const network = await provider.getNetwork();
+                document.getElementById('chainId').textContent = network.chainId;
+                
+                const blockNumber = await provider.getBlockNumber();
+                document.getElementById('blockNumber').textContent = blockNumber;
+                
+                const feeData = await provider.getFeeData();
+                document.getElementById('gasPrice').textContent = 
+                    ethers.formatUnits(feeData.gasPrice || 0, 'gwei') + ' Gwei';
+                
+                // 账户信息
+                await updateAccounts();
+                
+                // 合约信息
+                if (contractAddress) {
+                    await updateContractInfo();
+                }
+                
+            } catch (error) {
+                console.error('更新失败:', error);
+            }
+        }
+        
+        // 更新账户
+        async function updateAccounts() {
+            const accountsDiv = document.getElementById('accounts');
+            const accounts = [
+                '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+                '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+                '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'
+            ];
+            
+            let html = '';
+            for (let i = 0; i < accounts.length; i++) {
+                const balance = await provider.getBalance(accounts[i]);
+                html += `
+                    <div class="stat">
+                        <span class="label">账户 ${i}</span>
+                        <span class="value">${ethers.formatEther(balance).substring(0, 8)} ETH</span>
+                    </div>
+                    <div class="address">${accounts[i].substring(0, 20)}...</div>
+                `;
+            }
+            accountsDiv.innerHTML = html;
+        }
+        
+        // 更新合约信息
+        async function updateContractInfo() {
+            try {
+                // SimpleToken ABI
+                const abi = [
+                    "function name() view returns (string)",
+                    "function symbol() view returns (string)",
+                    "function totalSupply() view returns (uint256)",
+                    "function balanceOf(address) view returns (uint256)"
+                ];
+                
+                const contract = new ethers.Contract(contractAddress, abi, provider);
+                const name = await contract.name();
+                const symbol = await contract.symbol();
+                const totalSupply = await contract.totalSupply();
+                
+                document.getElementById('contractInfo').innerHTML = `
+                    <div class="stat">
+                        <span class="label">合约地址</span>
+                        <span class="value address">${contractAddress.substring(0, 20)}...</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">代币名称</span>
+                        <span class="value">${name}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">代币符号</span>
+                        <span class="value">${symbol}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">总供应量</span>
+                        <span class="value">${ethers.formatUnits(totalSupply, 18)}</span>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('合约查询失败:', error);
+            }
+        }
+        
+        // 监听新区块
+        function startMonitoring() {
+            provider.on('block', async (blockNumber) => {
+                addLog('log-info', `📦 新区块 #${blockNumber}`);
+                await updateDashboard();
+                
+                // 获取区块交易
+                const block = await provider.getBlock(blockNumber, true);
+                if (block && block.transactions.length > 0) {
+                    block.transactions.forEach(tx => {
+                        transactions.unshift({
+                            hash: tx.hash,
+                            from: tx.from,
+                            to: tx.to,
+                            value: ethers.formatEther(tx.value)
+                        });
+                    });
+                    
+                    // 保持最多10条
+                    transactions.splice(10);
+                    updateTransactions();
+                }
+            });
+        }
+        
+        // 更新交易列表
+        function updateTransactions() {
+            const txDiv = document.getElementById('transactions');
+            if (transactions.length === 0) {
+                txDiv.innerHTML = '<div class="tx-item">暂无交易</div>';
+                return;
+            }
+            
+            txDiv.innerHTML = transactions.map(tx => `
+                <div class="tx-item">
+                    <strong>${tx.hash.substring(0, 10)}...</strong><br>
+                    ${tx.from.substring(0, 10)}... → ${tx.to ? tx.to.substring(0, 10) + '...' : 'Contract'}<br>
+                    💰 ${tx.value} ETH
+                </div>
+            `).join('');
+        }
+        
+        // 发送测试交易
+        async function sendTestTx() {
+            if (!signer) {
+                alert('没有可用的签名账户');
+                return;
+            }
+            
+            try {
+                addLog('log-info', '⏳ 发送测试交易...');
+                const tx = await signer.sendTransaction({
+                    to: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+                    value: ethers.parseEther('1.0')
+                });
+                addLog('log-info', `📤 交易已发送: ${tx.hash.substring(0, 20)}...`);
+                
+                await tx.wait();
+                addLog('log-info', `✅ 交易确认: ${tx.hash.substring(0, 20)}...`);
+            } catch (error) {
+                addLog('log-error', '❌ 交易失败: ' + error.message);
+            }
+        }
+        
+        // 部署合约
+        async function deployContract() {
+            if (!signer) {
+                alert('没有可用的签名账户');
+                return;
+            }
+            
+            // SimpleToken 字节码（示例）
+            const bytecode = "0x608060405234801561001057600080fd5b5060405161..."; // 实际字节码太长，这里简化
+            const abi = ["constructor(uint256)"];
+            
+            try {
+                addLog('log-info', '⏳ 部署合约...');
+                const factory = new ethers.ContractFactory(abi, bytecode, signer);
+                const contract = await factory.deploy(1000000);
+                
+                addLog('log-info', `📄 合约部署中: ${contract.target}`);
+                await contract.waitForDeployment();
+                
+                contractAddress = contract.target;
+                localStorage.setItem('contractAddress', contractAddress);
+                
+                addLog('log-info', `✅ 合约部署成功: ${contractAddress}`);
+                await updateContractInfo();
+            } catch (error) {
+                addLog('log-error', '❌ 部署失败: ' + error.message);
+            }
+        }
+        
+        // 查询合约
+        async function queryContract() {
+            const address = prompt('输入合约地址:', contractAddress || '');
+            if (address) {
+                contractAddress = address;
+                localStorage.setItem('contractAddress', contractAddress);
+                await updateContractInfo();
+                addLog('log-info', `🔍 查询合约: ${address}`);
+            }
+        }
+        
+        // 添加日志
+        function addLog(className, message) {
+            const logs = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + className;
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+            logs.insertBefore(entry, logs.firstChild);
+            
+            // 限制100条
+            while (logs.children.length > 100) {
+                logs.removeChild(logs.lastChild);
+            }
+        }
+        
+        // 清空日志
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            addLog('log-info', '📝 日志已清空');
+        }
+        
+        // 导出数据
+        function exportData() {
+            const data = {
+                transactions: transactions,
+                contractAddress: contractAddress,
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `hardhat-data-${Date.now()}.json`;
+            a.click();
+            
+            addLog('log-info', '📥 数据已导出');
+        }
+        
+        // 启动
+        init();
+        
+        // 每5秒更新一次
+        setInterval(updateDashboard, 5000);
+        
+        // 页面关闭时清理
+        window.addEventListener('beforeunload', () => {
+            if (provider) {
+                provider.removeAllListeners();
+            }
+        });
+    </script>
+</body>
+</html>

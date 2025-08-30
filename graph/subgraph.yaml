@@ -1,0 +1,27 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: DataLogger
+    network: sepolia
+    source:
+      address: "0xEd05Da57AE62F71FE11e8643fF6a874919cD0c7d"
+      abi: DataLogger
+      startBlock: 9080000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - DataRecord
+        - TransactionRecord
+      abis:
+        - name: DataLogger
+          file: ./abis/DataLogger.json
+      eventHandlers:
+        - event: DataStored(indexed uint256,indexed address,indexed string,string,uint256)
+          handler: handleDataStored
+        - event: TransactionLogged(indexed uint256,indexed address,indexed address,uint256,string,uint256)
+          handler: handleTransactionLogged
+      file: ./src/mapping.ts

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardhat Dashboard - 本地区块链浏览器</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Alpine.js 用于简单的交互 -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Ethers.js -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+    
+    <!-- Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-cube text-white text-sm"></i>
+                    </div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        Hardhat Dashboard
+                    </h1>
+                </div>
+                
+                <!-- 连接状态 -->
+                <div class="flex items-center space-x-4">
+                    <!-- 网络状态 -->
+                    <div id="connectionStatus" class="flex items-center space-x-2">
+                        <div id="statusIndicator" class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        <span id="statusText" class="text-sm text-gray-400">未连接</span>
+                    </div>
+                    
+                    <!-- 网络信息 -->
+                    <div class="flex items-center space-x-4 text-sm">
+                        <div class="flex items-center space-x-1">
+                            <i class="fas fa-link text-gray-500"></i>
+                            <span>Chain ID: <span id="chainId" class="font-mono text-blue-400">-</span></span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <i class="fas fa-cube text-gray-500"></i>
+                            <span>区块: <span id="blockNumber" class="font-mono text-green-400">-</span></span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <i class="fas fa-gas-pump text-gray-500"></i>
+                            <span><span id="gasPrice" class="font-mono text-yellow-400">-</span> Gwei</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 设置按钮 -->
+                    <button onclick="openSettings()" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                        <i class="fas fa-cog text-gray-400"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- 标签页导航 -->
+    <div class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-4">
+            <div class="flex space-x-1" x-data="{ activeTab: 'accounts' }">
+                <button 
+                    @click="activeTab = 'accounts'; window.switchTab('accounts')"
+                    :class="activeTab === 'accounts' ? 'bg-gray-700 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-gray-700'"
+                    class="px-4 py-3 font-medium transition-all">
+                    <i class="fas fa-wallet mr-2"></i>账户
+                </button>
+                <button 
+                    @click="activeTab = 'blocks'; window.switchTab('blocks')"
+                    :class="activeTab === 'blocks' ? 'bg-gray-700 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-gray-700'"
+                    class="px-4 py-3 font-medium transition-all">
+                    <i class="fas fa-cubes mr-2"></i>区块
+                </button>
+                <button 
+                    @click="activeTab = 'transactions'; window.switchTab('transactions')"
+                    :class="activeTab === 'transactions' ? 'bg-gray-700 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-gray-700'"
+                    class="px-4 py-3 font-medium transition-all">
+                    <i class="fas fa-exchange-alt mr-2"></i>交易
+                </button>
+                <button 
+                    @click="activeTab = 'contracts'; window.switchTab('contracts')"
+                    :class="activeTab === 'contracts' ? 'bg-gray-700 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-gray-700'"
+                    class="px-4 py-3 font-medium transition-all">
+                    <i class="fas fa-file-code mr-2"></i>合约
+                </button>
+                <button 
+                    @click="activeTab = 'events'; window.switchTab('events')"
+                    :class="activeTab === 'events' ? 'bg-gray-700 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-gray-700'"
+                    class="px-4 py-3 font-medium transition-all">
+                    <i class="fas fa-bell mr-2"></i>事件
+                </button>
+                <button 
+                    @click="activeTab = 'console'; window.switchTab('console')"
+                    :class="activeTab === 'console' ? 'bg-gray-700 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-gray-700'"
+                    class="px-4 py-3 font-medium transition-all">
+                    <i class="fas fa-terminal mr-2"></i>控制台
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 主内容区域 -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- 账户面板 -->
+        <div id="accounts-panel" class="tab-panel">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-2">测试账户</h2>
+                <p class="text-gray-400">Hardhat 提供的<span id="accountsCount" class="font-mono text-green-400">-</span>个测试账户，每个账户初始余额为 10,000 ETH</p>
+            </div>
+            
+            <div class="grid gap-4" id="accountsList">
+                <!-- 账户卡片将由 JS 动态生成 -->
+                <div class="bg-gray-800 rounded-lg p-4 animate-pulse">
+                    <div class="h-4 bg-gray-700 rounded w-1/4 mb-2"></div>
+                    <div class="h-4 bg-gray-700 rounded w-3/4"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 区块面板 -->
+        <div id="blocks-panel" class="tab-panel hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-2">区块浏览器</h2>
+                <p class="text-gray-400">查看最近的区块和区块详情</p>
+            </div>
+            
+            <div id="blocksList">
+                <!-- 区块列表将由 JS 生成 -->
+            </div>
+        </div>
+        
+        <!-- 交易面板 -->
+        <div id="transactions-panel" class="tab-panel hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-2">交易记录</h2>
+                <p class="text-gray-400">所有交易的详细信息</p>
+            </div>
+            
+            <div id="transactionsList">
+                <!-- 交易列表将由 JS 生成 -->
+            </div>
+        </div>
+        
+        <!-- 合约面板 -->
+        <div id="contracts-panel" class="tab-panel hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-2">已部署合约</h2>
+                <p class="text-gray-400">查看和交互已部署的智能合约</p>
+            </div>
+            
+            <div id="contractsList">
+                <!-- 合约列表将由 JS 生成 -->
+            </div>
+        </div>
+        
+        <!-- 事件面板 -->
+        <div id="events-panel" class="tab-panel hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-2">事件日志</h2>
+                <p class="text-gray-400">智能合约触发的所有事件</p>
+            </div>
+            
+            <div id="eventsList">
+                <!-- 事件列表将由 JS 生成 -->
+            </div>
+        </div>
+        
+        <!-- 控制台面板 -->
+        <div id="console-panel" class="tab-panel hidden">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-2">控制台</h2>
+                <p class="text-gray-400">RPC 调用日志和系统消息</p>
+            </div>
+            
+            <div class="bg-gray-800 rounded-lg p-4 font-mono text-sm">
+                <div id="consoleOutput" class="h-96 overflow-y-auto">
+                    <!-- 日志输出 -->
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Toast 通知容器 -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+    
+    <!-- 加载所有 JS 模块 -->
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/accounts.js"></script>
+    <script src="js/blocks.js"></script>
+    <script src="js/transactions.js"></script>
+    <script src="js/contracts.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/console.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

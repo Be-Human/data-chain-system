@@ -1,0 +1,20 @@
+type DataRecord @entity(immutable: true) {
+  id: ID!
+  recordId: BigInt!
+  sender: String!
+  category: String!
+  data: String!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+}
+
+type TransactionRecord @entity(immutable: true) {
+  id: ID!
+  recordId: BigInt!
+  from: String!
+  to: String!
+  amount: BigInt!
+  memo: String!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+}

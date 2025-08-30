@@ -1,0 +1,17 @@
+{
+  "name": "datalogger-subgraph",
+  "version": "1.0.0",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "create-local": "graph create --node http://localhost:8020 datalogger",
+    "remove-local": "graph remove --node http://localhost:8020 datalogger",
+    "deploy-local": "graph deploy --node http://localhost:8020 --ipfs http://localhost:5001 datalogger",
+    "test": "graph test"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "0.60.0",
+    "@graphprotocol/graph-ts": "0.31.0",
+    "ethers": "^6.15.0"
+  }
+}

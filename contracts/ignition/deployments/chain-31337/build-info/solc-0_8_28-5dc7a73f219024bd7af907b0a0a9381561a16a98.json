@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-5dc7a73f219024bd7af907b0a0a9381561a16a98",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/DataLogger.sol": "project/contracts/DataLogger.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/DataLogger.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.28;\n\n/**\n * @title DataLogger\n * @dev 支持两种方式的数据上链：直接日志记录和带转账的记录\n */\ncontract DataLogger {\n    // ========== 状态变量 ==========\n    \n    uint256 private _recordIdCounter;\n    uint256 private _txRecordIdCounter;\n    \n    // ========== 结构体 ==========\n    \n    struct DataRecord {\n        uint256 id;\n        address sender;\n        string category;\n        string data;\n        uint256 timestamp;\n        uint256 blockNumber;\n    }\n    \n    struct TransactionRecord {\n        uint256 id;\n        address from;\n        address to;\n        uint256 amount;\n        string memo;\n        uint256 timestamp;\n        uint256 blockNumber;\n    }\n    \n    // ========== 映射 ==========\n    \n    // 用户地址 => 数据记录ID数组\n    mapping(address => uint256[]) public userDataRecords;\n    \n    // 用户地址 => 转账记录ID数组\n    mapping(address => uint256[]) public userTransactionRecords;\n    \n    // 记录ID => 数据记录\n    mapping(uint256 => DataRecord) public dataRecords;\n    \n    // 转账记录ID => 转账记录\n    mapping(uint256 => TransactionRecord) public transactionRecords;\n    \n    // ========== 事件 ==========\n    \n    event DataStored(\n        uint256 indexed recordId,\n        address indexed sender,\n        string indexed category,\n        string data,\n        uint256 timestamp\n    );\n    \n    event TransactionLogged(\n        uint256 indexed recordId,\n        address indexed from,\n        address indexed to,\n        uint256 amount,\n        string memo,\n        uint256 timestamp\n    );\n    \n    // ========== 函数 ==========\n    \n    /**\n     * @dev 方式1: 纯日志方式记录数据\n     * @param category 数据分类\n     * @param data 数据内容\n     */\n    function logData(string memory category, string memory data) public {\n        uint256 recordId = _recordIdCounter++;\n        \n        DataRecord memory newRecord = DataRecord({\n            id: recordId,\n            sender: msg.sender,\n            category: category,\n            data: data,\n            timestamp: block.timestamp,\n            blockNumber: block.number\n        });\n        \n        dataRecords[recordId] = newRecord;\n        userDataRecords[msg.sender].push(recordId);\n        \n        emit DataStored(\n            recordId,\n            msg.sender,\n            category,\n            data,\n            block.timestamp\n        );\n    }\n    \n    /**\n     * @dev 方式2: 带转账的数据记录\n     * @param recipient 接收方地址\n     * @param memo 转账备注/数据\n     */\n    function logWithPayment(address payable recipient, string memory memo) public payable {\n        require(msg.value > 0, \"Must send ETH\");\n        require(recipient != address(0), \"Invalid recipient\");\n        \n        uint256 recordId = _txRecordIdCounter++;\n        \n        // 执行转账\n        (bool success, ) = recipient.call{value: msg.value}(\"\");\n        require(success, \"Transfer failed\");\n        \n        // 记录转账信息\n        TransactionRecord memory newRecord = TransactionRecord({\n            id: recordId,\n            from: msg.sender,\n            to: recipient,\n            amount: msg.value,\n            memo: memo,\n            timestamp: block.timestamp,\n            blockNumber: block.number\n        });\n        \n        transactionRecords[recordId] = newRecord;\n        userTransactionRecords[msg.sender].push(recordId);\n        \n        emit TransactionLogged(\n            recordId,\n            msg.sender,\n            recipient,\n            msg.value,\n            memo,\n            block.timestamp\n        );\n    }\n    \n    // ========== 查询函数 ==========\n    \n    /**\n     * @dev 获取用户的所有数据记录ID\n     */\n    function getUserDataRecordIds(address user) public view returns (uint256[] memory) {\n        return userDataRecords[user];\n    }\n    \n    /**\n     * @dev 获取用户的所有转账记录ID\n     */\n    function getUserTransactionRecordIds(address user) public view returns (uint256[] memory) {\n        return userTransactionRecords[user];\n    }\n    \n    /**\n     * @dev 获取数据记录详情\n     */\n    function getDataRecord(uint256 recordId) public view returns (DataRecord memory) {\n        return dataRecords[recordId];\n    }\n    \n    /**\n     * @dev 获取转账记录详情\n     */\n    function getTransactionRecord(uint256 recordId) public view returns (TransactionRecord memory) {\n        return transactionRecords[recordId];\n    }\n    \n    /**\n     * @dev 获取记录总数\n     */\n    function getRecordCounts() public view returns (uint256 dataCount, uint256 txCount) {\n        return (_recordIdCounter, _txRecordIdCounter);\n    }\n}\n"
+      }
+    }
+  }
+}
